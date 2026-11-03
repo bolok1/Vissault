@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual Assault v0.4 — Multi-clip Director</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#07070c;color:#f4f2fa;font:15px system-ui,sans-serif}.wrap{max-width:1050px;margin:auto;padding:16px}h1{font-size:26px;margin:4px 0}.sub,.hint,.status{color:#aaa;font-size:12px}.panel{background:#12121b;border:1px solid #292938;border-radius:14px;padding:13px;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}label{display:block;font-size:12px;color:#c8c5d2;margin-bottom:5px}input,select,button,textarea{width:100%;padding:10px;border:1px solid #39394a;border-radius:9px;background:#1a1a26;color:#fff}input[type=range]{padding:0}button{font-weight:700;cursor:pointer}button:disabled{opacity:.4}canvas{display:block;width:100%;height:auto;background:#000;border-radius:10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.status{margin-top:8px;min-height:16px}.tag{display:inline-block;border:1px solid #45455b;border-radius:20px;padding:3px 8px;font-size:11px;color:#c9c4ff}textarea{min-height:66px;resize:vertical;font:12px system-ui}@media(max-width:650px){.grid{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}
+</style></head><body><main class="wrap">
+<h1>VISUAL ASSAULT <span class="tag">v0.4 — MULTI-CLIP DIRECTOR</span></h1>
+<div class="sub">Multiple local clips, automatic footage changes, procedural overlays and a simple licence/credit record. No uploads, subscriptions or AI credits.</div>
+<section class="panel grid">
+<div><label for="audioFile">1. Choose your music</label><input id="audioFile" type="file" accept="audio/*"><div id="audioName" class="status">No track loaded.</div></div>
+<div><label for="videoFiles">2. Choose multiple video clips</label><input id="videoFiles" type="file" accept="video/*" multiple><div id="videoName" class="status">No footage loaded yet.</div></div>
+</section>
+<section class="panel grid">
+<div><label for="mode">Visual treatment</label><select id="mode"><option value="director">AUTO // DIRECTOR</option><option value="particles">PARTICLE STORM</option><option value="tunnel">TUNNEL</option><option value="rings">RINGS</option><option value="fracture">FRACTURE</option><option value="fluid">FLUID LINES</option></select></div>
+<div><label for="aspect">Output shape</label><select id="aspect"><option value="16:9">16:9 landscape</option><option value="9:16">9:16 vertical</option><option value="1:1">1:1 square</option></select></div>
+<div><label for="blend">Footage / effects mix: <b id="blendVal">65%</b></label><input id="blend" type="range" min="0" max="100" value="65"></div>
+<div><label for="intensity">Effect intensity: <b id="intensityVal">7</b></label><input id="intensity" type="range" min="1" max="10" value="7"></div>
+<div><label for="chaos">Chaos: <b id="chaosVal">6</b></label><input id="chaos" type="range" min="0" max="10" value="6"></div>
+<div><label for="colour">Colour shift: <b id="colourVal">7</b></label><input id="colour" type="range" min="0" max="10" value="7"></div>
+</section>
+<section class="panel">
+<label for="credits">Footage source / licence notes (optional but strongly recommended)</label>
+<textarea id="credits" placeholder="Example: clip 1 — creator, source URL, CC BY 4.0; clip 2 — Pexels, creator and asset URL. Check each licence before use."></textarea>
+<div class="hint">Keep the creator, original asset URL and exact licence for every clip. This note is saved as a credits text file when you export.</div>
+</section>
+<section class="panel"><canvas id="stage" width="1280" height="720"></canvas>
+<div class="actions"><button id="play" disabled>▶ PLAY</button><button id="record" disabled>● RECORD / EXPORT WEBM</button></div>
+<div id="status" class="status">Load music and one or more clips to begin. Music works without footage too.</div>
+<div class="hint">AUTO // DIRECTOR cycles through your selected clips. Higher energy shortens the shot; quieter passages hold longer. This is an early timing experiment, not full beat/section analysis yet.</div></section>
+<video id="footage" muted playsinline style="display:none"></video><audio id="music"></audio></main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),canvas=$('stage'),ctx=canvas.getContext('2d'),audio=$('music'),video=$('footage');
+let audioUrl=null,clipUrls=[],clipNames=[],clipIndex=0,nextCutAt=0,ac=null,analyser=null,source=null,freq=null,raf=0,recorder=null,chunks=[],recording=false,lastHit=0,pulse=0,wasPlaying=false;
+const setStatus=s=>$('status').textContent=s;
+['blend','intensity','chaos','colour'].forEach(id=>$(id).addEventListener('input',()=>$(id+'Val').textContent=$(id).value+(id==='blend'?'%':'')));
+$('audioFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(f);audio.src=audioUrl;$('audioName').textContent=f.name;$('play').disabled=false;$('record').disabled=false;setStatus('Music loaded. Add clips or press PLAY for generated visuals alone.')});
+function selectClip(i){if(!clipUrls.length)return;clipIndex=((i%clipUrls.length)+clipUrls.length)%clipUrls.length;video.src=clipUrls[clipIndex];video.load();const p=video.play();if(p&&p.catch)p.catch(()=>{});$('videoName').textContent=clipUrls.length+' clips loaded • now: '+clipNames[clipIndex];}
+$('videoFiles').addEventListener('change',e=>{clipUrls.forEach(URL.revokeObjectURL);clipUrls=[];clipNames=[];for(const f of e.target.files){if(f.type.startsWith('video/')){clipUrls.push(URL.createObjectURL(f));clipNames.push(f.name)}}if(clipUrls.length){selectClip(0);$('play').disabled=!audioUrl;$('record').disabled=!audioUrl;setStatus(clipUrls.length+' clips ready. AUTO // DIRECTOR will cycle through them while the music plays.')}else{$('videoName').textContent='No supported video clips selected.'}});
+function resize(){const a=$('aspect').value;canvas.width=a==='9:16'?720:a==='1:1'?720:1280;canvas.height=a==='9:16'?1280:720}
+$('aspect').addEventListener('change',resize);
+async function initAudio(){if(ac)return;ac=new(window.AudioContext||window.webkitAudioContext)();analyser=ac.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=.78;source=ac.createMediaElementSource(audio);source.connect(analyser);analyser.connect(ac.destination);freq=new Uint8Array(analyser.frequencyBinCount)}
+function levels(){analyser.getByteFrequencyData(freq);let bass=0,mid=0,high=0,n=freq.length;for(let i=0;i<n;i++){const v=freq[i]/255;if(i<n*.08)bass+=v;else if(i<n*.35)mid+=v;else high+=v}return[bass/(n*.08),mid/(n*.27),high/(n*.65)]}
+function rgb(h,s,l){const q=s*Math.min(l,1-l),f=n=>l-q*Math.max(-1,Math.min((n+h*12)%12-3,9-(n+h*12)%12,1));return 'rgb('+[f(0),f(8),f(4)].map(v=>Math.round(v*255)).join(',')+')'}
+function drawVideo(W,H,alpha){if(video.readyState<2||!video.videoWidth)return;const scale=Math.max(W/video.videoWidth,H/video.videoHeight),w=video.videoWidth*scale,h=video.videoHeight*scale;ctx.save();ctx.globalAlpha=alpha;ctx.drawImage(video,(W-w)/2,(H-h)/2,w,h);ctx.restore()}
+function effects(mode,b,m,h,t,p){const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,I=+$('intensity').value/10,C=+$('chaos').value/10,S=+$('colour').value/10,hue=(t*14*S+(b+m+h)*55)%360;ctx.save();ctx.globalCompositeOperation='screen';
+if(mode==='director')mode=(b>.62?'particles':m>.48?'tunnel':audio.currentTime%22<12?'rings':'fluid');
+if(mode==='particles'||mode==='fracture'){const count=mode==='fracture'?95:100+Math.round(I*130+C*130);for(let i=0;i<count;i++){const q=mode==='fracture'?Math.random()*Math.PI*2:i*2.399+t*(.2+C),r=(.12+((i*37)%100)/100*.8)*Math.min(W,H)*(.25+I*.38),x=cx+Math.cos(q)*r,y=cy+Math.sin(q)*r;ctx.strokeStyle=rgb((hue+i*4)%360,.9,.55);ctx.lineWidth=.7+I*1.8+p*3;ctx.beginPath();ctx.moveTo(cx+(x-cx)*.72,cy+(y-cy)*.72);ctx.lineTo(x,y);ctx.stroke()}}
+if(mode==='tunnel'){for(let j=0;j<30;j++){const z=(j/30+t*(.12+b*.25))%1,r=z*z*Math.min(W,H)*.78;ctx.strokeStyle=rgb((hue+j*12)%360,.95,.3+.4*(1-z));ctx.lineWidth=1+I*2*(1-z)+p*2;ctx.beginPath();for(let k=0;k<=64;k++){const q=k/64*Math.PI*2,rr=r*(1+Math.sin(q*7+t*2)*.025*C),x=cx+Math.cos(q)*rr,y=cy+Math.sin(q)*rr;k?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}}
+if(mode==='rings'){for(let j=0;j<13;j++){const z=(t*(.12+b*.3)+j/13)%1,r=z*Math.min(W,H)*.72;ctx.strokeStyle=rgb((hue+j*22)%360,.95,.5);ctx.lineWidth=(1+I*3)*(1-z)+p*8;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke()}}
+if(mode==='fluid'){for(let j=0;j<18;j++){ctx.beginPath();for(let i=0;i<100;i++){const x=i/99*W,y=cy+(j-9)*H*.055+Math.sin(i*.11+t*1.6+j)*H*.05+Math.sin(i*.06+t*2+j)*H*(.04+b*.2);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.strokeStyle=rgb((hue+j*15)%360,.9,.55);ctx.lineWidth=1+I*2+b*3;ctx.stroke()}}
+ctx.restore()}
+function frame(){raf=requestAnimationFrame(frame);if(!analyser)return;const [b,m,h]=levels(),t=performance.now()/1000,now=audio.currentTime,hit=b*.7+m*.3;if(hit>.68&&performance.now()-lastHit>140){lastHit=performance.now();pulse=1}pulse*=.9;
+if(clipUrls.length&&now>=nextCutAt){selectClip(clipIndex+1);const energy=Math.max(b,m);nextCutAt=now+(energy>.62?4.5:energy>.38?7:10.5)}
+const blend=+$('blend').value/100;ctx.fillStyle='#05050a';ctx.fillRect(0,0,canvas.width,canvas.height);drawVideo(canvas.width,canvas.height,blend);effects($('mode').value,b,m,h,t,pulse);ctx.fillStyle='rgba(255,255,255,.82)';ctx.font='bold 15px system-ui';ctx.fillText('VISUAL ASSAULT // MULTI-CLIP + FX',16,26)}
+$('play').addEventListener('click',async()=>{await initAudio();await ac.resume();if(audio.paused){await audio.play();if(clipUrls.length)await video.play().catch(()=>{});$('play').textContent='❚❚ PAUSE';if(!raf)frame()}else{audio.pause();video.pause();$('play').textContent='▶ PLAY'}});
+audio.addEventListener('ended',()=>{video.pause();$('play').textContent='▶ PLAY';if(recording)stopRecording()});
+function downloadText(name,content){const blob=new Blob([content],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+function stopRecording(){if(!recording)return;recording=false;recorder.stop();$('record').textContent='● RECORD / EXPORT WEBM'}
+$('record').addEventListener('click',async()=>{await initAudio();await ac.resume();if(recording){stopRecording();return}if(audio.paused){await audio.play();if(clipUrls.length)await video.play().catch(()=>{})}if(!raf)frame();const videoStream=canvas.captureStream(30),audioOut=ac.createMediaStreamDestination();source.connect(audioOut);const stream=new MediaStream([...videoStream.getVideoTracks(),...audioOut.stream.getAudioTracks()]);const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));recorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});chunks=[];recording=true;$('record').textContent='■ STOP & SAVE';recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=()=>{const blob=new Blob(chunks,{type:recorder.mimeType||'video/webm'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='visual-assault-v04.webm';link.click();setTimeout(()=>URL.revokeObjectURL(url),3000);const credits='VISUAL ASSAULT v0.4 — FOOTAGE CREDITS / LICENCE NOTES\n\nTrack: '+($('audioName').textContent||'Not recorded')+'\nSelected clips:\n'+clipNames.map((n,i)=>(i+1)+'. '+n).join('\n')+'\n\nSource and licence notes supplied by user:\n'+($('credits').value.trim()||'No source/licence notes entered.')+'\n\nReminder: verify the exact licence and any attribution, modification and commercial-use conditions for every asset.\n';downloadText('visual-assault-v04-credits.txt',credits);setStatus('Video and companion credits note exported. Check Downloads.');};recorder.start(1000);setStatus('Recording composite. Press STOP & SAVE when ready.')});
+window.addEventListener('beforeunload',()=>{if(audioUrl)URL.revokeObjectURL(audioUrl);clipUrls.forEach(URL.revokeObjectURL)});
+})();
+</script></body></html>
