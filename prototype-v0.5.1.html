@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Visual Assault v0.5.1 — Footage Hunter</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#08080e;color:#f4f2fa;font:15px system-ui,sans-serif}.wrap{max-width:1120px;margin:auto;padding:16px}h1{font-size:26px;margin:4px 0}.muted,.small,.status{color:#aaa;font-size:12px;line-height:1.5}.tag{border:1px solid #6556ad;border-radius:20px;padding:3px 8px;font-size:11px;color:#d0c7ff}.panel{background:#13131e;border:1px solid #2d2c3c;border-radius:14px;padding:14px;margin:13px 0}input,button{width:100%;padding:11px;border:1px solid #414054;border-radius:9px;background:#1b1b29;color:#fff;font:inherit}button{font-weight:700;cursor:pointer}.primary{background:#5b43bb;border-color:#806de0}.row{display:grid;grid-template-columns:1fr auto;gap:9px}.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.chips button{width:auto;font-size:12px;padding:7px 10px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}.item{background:#1a1a26;border:1px solid #363548;border-radius:12px;overflow:hidden}.item video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#050509}.body{padding:10px}.body strong{font-size:13px;display:block;line-height:1.4}.meta{font-size:11px;color:#aaa;line-height:1.5;margin:6px 0}.lic{font-size:11px;color:#d9d0ff}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.actions button,.actions a{font-size:11px;padding:8px;text-align:center;text-decoration:none;border:1px solid #51477b;border-radius:8px;color:#e7dfff;background:#202033}.status{min-height:18px;margin-top:9px}.empty{padding:22px;text-align:center;border:1px dashed #454457;border-radius:10px;color:#aaa}.warning{background:#251f15;border-left:3px solid #d59b42;padding:10px;font-size:12px;line-height:1.5;color:#efddb9}.link{color:#d2c7ff}.short{padding:8px 0;border-bottom:1px solid #343344;font-size:12px}.foot{display:flex;gap:14px;flex-wrap:wrap}.foot a{font-size:12px;color:#cbbfff}@media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}.wrap{padding:11px}}
+</style></head><body><main class="wrap">
+<h1>VISUAL ASSAULT <span class="tag">v0.5.1 — FOOTAGE HUNTER</span></h1>
+<div class="muted">A better stock-video search with actual inline video previews. Pexels search is free, but requires your own free API key.</div>
+<section class="panel">
+<label for="key">1. Pexels API key</label><input id="key" type="password" autocomplete="off" placeholder="Paste your free Pexels API key here">
+<div class="small">Get a key at <a class="link" href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api ↗</a>. Sign in and request an API key. The key is used only in this browser session and is not saved or sent anywhere except Pexels. Do not share a public copy of this page containing your key.</div>
+</section>
+<section class="panel">
+<label for="query">2. What footage are you after?</label><div class="row"><input id="query" placeholder="e.g. underground rave crowd, explosions, futuristic city"><button class="primary" id="search">SEARCH VIDEOS</button></div>
+<div class="chips"><button data-q="rave crowd">Rave / crowd</button><button data-q="explosion fire">Explosions</button><button data-q="underground nightclub">Nightclub</button><button data-q="futuristic city night">Future city</button><button data-q="extreme sports">Extreme sports</button><button data-q="abstract liquid">Abstract</button><button data-q="industrial machinery">Industrial</button></div>
+<div id="status" class="status">Enter your API key and search a subject. Results should preview as moving video, not just audio.</div>
+</section>
+<section class="panel"><strong>Video results</strong><span class="small" id="count" style="float:right">No search yet</span><div id="results" class="grid"><div class="empty" style="grid-column:1/-1">Search results will appear here.</div></div><div class="actions"><button id="more" disabled>LOAD MORE RESULTS</button><button id="clear">CLEAR RESULTS</button></div></section>
+<section class="panel"><strong>Your shortlist</strong><span class="small" id="shortCount" style="float:right">0 selected</span><div id="shortlist" class="empty" style="margin-top:10px">Add clips from the results to build your footage pack.</div><p class="small">This version previews real video files in-page. For now, use each clip's Pexels page to download it, then add those files to v0.4. Direct automatic import is the next engineering step.</p><div class="actions"><button id="credits" disabled>DOWNLOAD CREDITS NOTE</button><a class="actions" style="display:block;padding:10px;text-align:center;color:#d8ceff" href="https://bolok1.github.io/Vissault/prototype-v0.4.html" target="_blank" rel="noopener">OPEN v0.4 VIDEO DIRECTOR ↗</a></div><div id="shortStatus" class="status"></div></section>
+<div class="warning">Pexels content is free to use subject to its licence and API terms. Give visible credit to Pexels and credit videographers where possible. Check the current terms before commercial use. Search results do not guarantee a clip is suitable for every use.</div>
+<div class="foot" style="margin:12px 2px"><a href="https://www.pexels.com/api/documentation/" target="_blank" rel="noopener">Pexels API documentation ↗</a><a href="https://www.pexels.com/license/" target="_blank" rel="noopener">Pexels licence ↗</a><a href="https://pixabay.com/videos/" target="_blank" rel="noopener">Pixabay video library ↗</a></div>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);let page=1,lastQuery='',items=[],shortlist=[];
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function pickFile(v){const fs=(v.video_files||[]).filter(f=>f.file_type==='video/mp4'&&f.link);fs.sort((a,b)=>((b.width||0)*(b.height||0))-((a.width||0)*(a.height||0)));return fs.find(f=>(f.width||0)<=1920)||fs[0]}
+function render(){
+$('count').textContent=items.length+' clips found';
+$('results').innerHTML=items.length?items.map((v,i)=>{const f=pickFile(v);return '<article class="item"><video controls muted playsinline preload="none" poster="'+esc(v.image)+'" src="'+esc(f?f.link:'')+'"></video><div class="body"><strong>Video by '+esc(v.user&&v.user.name||'Pexels creator')+'</strong><div class="meta">'+(v.duration||'?')+' sec · '+(f?f.width+' × '+f.height:'Preview unavailable')+'</div><div class="lic">Pexels video · free under Pexels licence</div><div class="actions"><a href="'+esc(v.url)+'" target="_blank" rel="noopener">SOURCE / DOWNLOAD ↗</a><button data-add="'+i+'">'+(shortlist.some(x=>x.id===v.id)?'ADDED ✓':'＋ SHORTLIST')+'</button></div></div></article>'}).join(''):'<div class="empty" style="grid-column:1/-1">No clips displayed. Try a broader phrase.</div>';
+$('results').querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const v=items[+b.dataset.add];if(!shortlist.some(x=>x.id===v.id)){shortlist.push(v);renderShort()}render()});
+$('more').disabled=!items.length;
+}
+function renderShort(){
+$('shortCount').textContent=shortlist.length+' selected';$('credits').disabled=!shortlist.length;
+$('shortlist').className=shortlist.length?'':'empty';
+$('shortlist').innerHTML=shortlist.length?shortlist.map((v,i)=>'<div class="short"><strong>'+esc(v.user&&v.user.name||'Pexels creator')+'</strong> · '+(v.duration||'?')+' sec · <a class="link" href="'+esc(v.url)+'" target="_blank" rel="noopener">source page ↗</a> <button data-remove="'+i+'" style="width:auto;padding:4px 8px;font-size:10px">REMOVE</button></div>').join(''):'Add clips from the results to build your footage pack.';
+$('shortlist').querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{shortlist.splice(+b.dataset.remove,1);renderShort();render()});
+}
+async function search(next=false){
+const key=$('key').value.trim(),q=$('query').value.trim();if(!key){$('status').textContent='First, get a free Pexels API key and paste it into the key box above.';return}if(!q){$('status').textContent='Enter a subject to search.';return}
+if(!next){page=1;items=[];lastQuery=q}
+$('search').disabled=true;$('status').textContent='Searching Pexels…';
+try{const url='https://api.pexels.com/v1/videos/search?'+new URLSearchParams({query:q,per_page:'18',page:String(page)});const res=await fetch(url,{headers:{Authorization:key}});if(!res.ok){let msg='HTTP '+res.status;if(res.status===401)msg='API key not recognised — check it and try again';if(res.status===429)msg='Pexels rate limit reached — wait before searching again';throw new Error(msg)}
+const data=await res.json();const incoming=(data.videos||[]).filter(v=>pickFile(v));items=next?items.concat(incoming):incoming;render();$('status').textContent=(data.total_results||items.length)+' matching Pexels videos in the library. '+incoming.length+' loaded on this page.';page++;$('more').disabled=!data.next_page;
+}catch(e){$('status').textContent='Search failed: '+e.message+'. Check your connection and API key.'}
+finally{$('search').disabled=false}
+}
+$('search').onclick=()=>search(false);$('more').onclick=()=>search(true);$('query').addEventListener('keydown',e=>{if(e.key==='Enter')search(false)});document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{$('query').value=b.dataset.q;search(false)});
+$('clear').onclick=()=>{items=[];render();$('status').textContent='Results cleared.'};
+$('credits').onclick=()=>{const out=['VISUAL ASSAULT v0.5.1 — PEXELS FOOTAGE CREDITS','Generated: '+new Date().toLocaleString(),'','Pexels source: https://www.pexels.com/',''];shortlist.forEach((v,i)=>out.push((i+1)+'. Video by '+(v.user&&v.user.name||'Creator not supplied'),'Source page: '+v.url,'Duration: '+v.duration+' seconds','Video ID: '+v.id,'Credit: Video by '+(v.user&&v.user.name||'creator')+' on Pexels',''));out.push('Check current Pexels licence and API terms before use.');const blob=new Blob([out.join('\n')],{type:'text/plain'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='visual-assault-pexels-credits.txt';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);$('shortStatus').textContent='Credits note downloaded.'};
+renderShort();
+})();
+</script></body></html>
